@@ -25,6 +25,7 @@ except Exception:
 from idle_monitor import IdleMonitor
 from mic_mute import MicMuteController
 from settings import AppSettings, SETTINGS_DIR
+from update_checker import check_for_updates_on_launch
 
 _APP_DIR = os.path.dirname(os.path.abspath(__file__))
 _ENTRY_SCRIPT = os.path.join(_APP_DIR, "micsentry.py")
@@ -89,6 +90,18 @@ class TrayApp:
 
         self._update_visual_state()
         GLib.timeout_add_seconds(1, self._on_tick)
+
+        if self.settings.check_for_updates:
+            check_for_updates_on_launch(self._on_update_available)
+
+    def _on_update_available(self, version, url):
+        # Runs on update_checker's background thread — never touch GTK/
+        # AppIndicator objects off the main thread, marshal back via idle_add.
+        GLib.idle_add(self._show_update_notification, version, url)
+
+    def _show_update_notification(self, version, url):
+        _notify("MicSentry", f"Version {version} is available: {url}")
+        return False  # one-shot; GLib.idle_add would otherwise repeat this
 
     def _build_menu(self):
         menu = Gtk.Menu()
@@ -192,12 +205,17 @@ class TrayApp:
         startup_check.set_active(self.settings.start_with_login)
         box.add(startup_check)
 
+        update_check = Gtk.CheckButton(label="Check for updates on launch (contacts GitHub)")
+        update_check.set_active(self.settings.check_for_updates)
+        box.add(update_check)
+
         dialog.show_all()
         response = dialog.run()
 
         if response == Gtk.ResponseType.OK:
             self.settings.idle_minutes = int(idle_spin.get_value())
             self.settings.start_with_login = startup_check.get_active()
+            self.settings.check_for_updates = update_check.get_active()
             self.settings.save()
             self._set_autostart(self.settings.start_with_login)
             self._update_visual_state()

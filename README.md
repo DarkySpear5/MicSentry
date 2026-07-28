@@ -22,7 +22,8 @@ If you're in a voice call and step away from your desk for a few minutes without
 
 This was built specifically to be trustworthy for exactly the situation where trust matters: private conversations you don't want overheard.
 
-- **Zero network calls.** MicSentry makes no outbound connections of any kind — nothing to leak, nothing to phone home to. You can verify this yourself in Task Manager's network column or a firewall log.
+- **Zero network calls on Windows.** MicSentry makes no outbound connections of any kind — nothing to leak, nothing to phone home to. You can verify this yourself in Task Manager's network column or a firewall log.
+- **Linux has one opt-in exception**, off by default: an optional "Check for updates on launch" setting that, only if you turn it on, makes a single request to GitHub at startup to check the latest release — never auto-downloads, never nags, silent on failure. See [linux/README.md](linux/README.md) for exactly what it does and why it's there.
 - **No keylogging.** It only ever reads *when* the last input happened, never *what* was pressed.
 - **Open source.** The entire codebase is small enough to read in one sitting — see for yourself.
 - **Visible confirmation.** Every auto-mute and auto-unmute shows a tray notification, so you always know it's actually working instead of trusting a silent background process.
