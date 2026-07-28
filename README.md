@@ -29,6 +29,10 @@ This was built specifically to be trustworthy for exactly the situation where tr
 
 ## Install
 
+### 🪟 Windows
+
+Fully built and tested against real hardware.
+
 **Option 1 — Installer (recommended):** grab the latest `MicSentrySetup.exe` from [Releases](../../releases), run it, done. Installs per-user (no admin rights needed), adds a Start Menu entry and uninstaller. The download is ~110MB because it bundles the .NET runtime so it works with zero prerequisites — that's disk/download size only, not memory use, which stays around 40MB while running either way.
 
 **Option 2 — Build from source:**
@@ -41,7 +45,21 @@ dotnet build -c Release
 
 Requires the [.NET 9 SDK](https://dotnet.microsoft.com/download). The built exe will be in `bin\Release\net9.0-windows\`.
 
-**Linux: ⚠️ experimental, not yet verified on a real machine — contributions and testers welcome.** The idle-detection and mute logic have automated tests and pass, but the actual GTK tray icon / D-Bus / pactl integration has never been run on real hardware. See [linux/README.md](linux/README.md) for install steps, dependencies, and known gaps (notably: no tray icon on stock GNOME without an extra extension, and no idle detection yet on non-GNOME Wayland compositors). It's designed to be safe to try either way — no root required anywhere, nothing touches system paths.
+---
+
+### 🐧 Linux ⚠️ Experimental — not yet verified on real hardware
+
+Settings persistence and the mute state-machine logic have automated tests and pass, but the actual GTK tray icon / D-Bus / pactl integration has never been run on a real Linux machine. Safe to try either way — no root required anywhere, nothing touches system paths. Contributions and testers welcome.
+
+```bash
+git clone https://github.com/DarkySpear5/MicSentry.git
+cd MicSentry/linux
+./install.sh
+```
+
+Or grab `MicSentry-Linux-v1.0.0.tar.gz` from [Releases](../../releases) instead of cloning.
+
+See [linux/README.md](linux/README.md) for dependencies and known gaps (notably: no tray icon on stock GNOME without an extra extension, and no idle detection yet on non-GNOME Wayland compositors).
 
 ## Usage
 
