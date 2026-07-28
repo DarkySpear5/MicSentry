@@ -4,3 +4,6 @@ obj/
 .vs/
 publish/
 installer/Output/
+/MicSentry.exe
+__pycache__/
+*.pyc
