@@ -1,6 +1,6 @@
 # MicSentry for Linux
 
-⚠️ **Experimental and untested.** This was built and syntax/logic-checked from a Windows machine — the settings persistence and the mic-mute state logic have automated tests and pass, but the actual GTK tray icon, D-Bus idle detection, and pactl integration have never been run on a real Linux desktop. It should be safe to try (see "Safety" below), but don't be surprised if something doesn't work first try. [Open an issue](../../issues) if it doesn't — that's how this gets fixed.
+⚠️ **Experimental, lightly tested.** Confirmed working on a real Linux machine (thanks to an actual tester), but this was still built and mostly verified from a Windows machine, so treat it as less battle-tested than the Windows build. [Open an issue](../../issues) if something's off — that's how this gets fixed.
 
 Same idea as the Windows version: mutes your mic after real inactivity, unmutes itself when you're back, mutes every real mic input (not just one).
 
@@ -9,6 +9,8 @@ Same idea as the Windows version: mutes your mic after real inactivity, unmutes 
 - **Idle detection** tries, in order: GNOME's Mutter D-Bus idle monitor (covers GNOME on X11 and Wayland), then the X11 MIT-SCREEN-SAVER extension (covers KDE Plasma X11, XFCE, and most other X11 window managers). If neither is available — most notably **non-GNOME Wayland compositors** like Sway or KDE Plasma Wayland — idle detection is unavailable and **the app will never auto-mute** rather than guess. The tray icon and menu will say "Idle detection unavailable" in that case.
 - **Muting** uses `pactl` (works with PulseAudio and PipeWire's pulse-compatibility layer, which covers the large majority of Linux desktops) against every real input source, skipping `.monitor` sources (those are output loopbacks, not microphones).
 - **Tray icon** uses AppIndicator (Ayatana or the older AppIndicator3, whichever is present). **Stock GNOME Shell does not show tray icons at all** unless you install the "AppIndicator and KStatusNotifierItem Support" extension — see below.
+- **Hovering the tray icon** shows "MicSentry — <status>" via the indicator's title. Whether this actually renders as a mouse-hover tooltip depends on your tray host implementation — some desktop environments show it, some don't; this isn't something the app can force everywhere.
+- **Process name**: the process renames itself (via `prctl`) so it shows up as `micsentry` in `ps`/`top`/`htop` and most system monitors' Name column, instead of the generic `python3` every Python script would otherwise show as — so you (or whoever's checking memory usage) can actually tell it apart from other Python processes.
 
 ## Install
 

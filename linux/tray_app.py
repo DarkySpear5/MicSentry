@@ -42,6 +42,24 @@ def _notify(title, body):
         pass
 
 
+def _set_process_name(name):
+    """Renames this process (as seen in ps/top/htop and most system monitors'
+    Name column) from the generic "python3" to something identifiable, via
+    the standard Linux prctl(PR_SET_NAME) syscall. Best-effort: silently does
+    nothing if this isn't Linux or the call fails for any reason — it's a
+    cosmetic fix, never worth crashing over. Names are truncated to 15 bytes,
+    which is the kernel's actual limit for this field.
+    """
+    try:
+        import ctypes
+
+        libc = ctypes.CDLL("libc.so.6", use_errno=True)
+        PR_SET_NAME = 15
+        libc.prctl(PR_SET_NAME, name.encode("utf-8")[:15], 0, 0, 0)
+    except Exception:
+        pass
+
+
 class TrayApp:
     def __init__(self):
         self.settings = AppSettings.load()
@@ -55,6 +73,10 @@ class TrayApp:
             AppIndicator3.IndicatorCategory.APPLICATION_STATUS,
         )
         self.indicator.set_status(AppIndicator3.IndicatorStatus.ACTIVE)
+        try:
+            self.indicator.set_title("MicSentry")
+        except Exception:
+            pass  # not every tray host surfaces this as a hover tooltip, but it's harmless either way
 
         self._build_menu()
 
@@ -220,9 +242,14 @@ class TrayApp:
 
         self.indicator.set_icon_full(os.path.join(_ICON_DIR, icon), status)
         self.status_item.set_label("Status: " + status)
+        try:
+            self.indicator.set_title("MicSentry — " + status)
+        except Exception:
+            pass
 
 
 def main():
+    _set_process_name("micsentry")
     os.makedirs(SETTINGS_DIR, exist_ok=True)
     lock_file = open(_LOCK_PATH, "w")
     try:
