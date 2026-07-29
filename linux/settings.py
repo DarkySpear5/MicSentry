@@ -15,8 +15,8 @@ DEFAULTS = {
     # the box. See update_checker.py.
     "check_for_updates": False,
     # Source names to never mute, even though they're active inputs — empty
-    # by default, which preserves "mute everything" for anyone who never
-    # touches this setting.
+    # by default, which keeps the original "mute everything" behaviour for
+    # anyone who never opens the Devices menu.
     "excluded_devices": [],
 }
 
@@ -48,6 +48,7 @@ class AppSettings:
                     "idle_minutes": self.idle_minutes,
                     "start_with_login": self.start_with_login,
                     "check_for_updates": self.check_for_updates,
+                    "excluded_devices": self.excluded_devices,
                 },
                 f,
                 indent=2,

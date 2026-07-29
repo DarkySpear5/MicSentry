@@ -17,8 +17,7 @@ class MicMuteController:
         self._pre_mute_state = {}
         self.is_app_muted = False
         # Source names to leave alone entirely, even though they're active
-        # inputs — empty by default, which preserves the original "mute
-        # everything" behavior for anyone who never touches this setting.
+        # inputs. Empty by default = original "mute everything" behaviour.
         self.excluded_sources = set()
 
     def mute_all(self):
@@ -94,10 +93,12 @@ class MicMuteController:
 
     @staticmethod
     def get_available_devices():
-        """[(source_name, friendly_description), ...] for the device-selection
-        submenu. Uses the long-form `pactl list sources` for human-readable
-        descriptions — the short form only gives raw source names. Returns
-        an empty list on any failure rather than raising.
+        """[(source_name, friendly_description), ...] for the Devices menu.
+
+        Uses the long-form `pactl list sources` because the short form only
+        gives raw source names, which are unreadable. Returns [] on any
+        failure rather than raising — a broken device list must never stop
+        the app from muting.
         """
         try:
             out = subprocess.run(

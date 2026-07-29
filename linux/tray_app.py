@@ -25,7 +25,7 @@ except Exception:
 from idle_monitor import IdleMonitor
 from mic_mute import MicMuteController
 from settings import AppSettings, SETTINGS_DIR
-from update_checker import check_for_updates_on_launch
+from update_checker import CURRENT_VERSION, check_for_updates_on_launch
 
 _APP_DIR = os.path.dirname(os.path.abspath(__file__))
 _ENTRY_SCRIPT = os.path.join(_APP_DIR, "micsentry.py")
@@ -101,12 +101,7 @@ class TrayApp:
         GLib.idle_add(self._show_update_notification, version, url)
 
     def _show_update_notification(self, version, url):
-        _notify(
-            "MicSentry",
-            f"Version {version} is available. To update: git pull (or download the new "
-            f"release) then re-run install.sh — it'll restart MicSentry for you. "
-            f"{url}",
-        )
+        _notify("MicSentry", f"Version {version} is available: {url}")
         return False  # one-shot; GLib.idle_add would otherwise repeat this
 
     def _build_menu(self):
@@ -115,6 +110,14 @@ class TrayApp:
         self.status_item = Gtk.MenuItem(label="Status: —")
         self.status_item.set_sensitive(False)
         menu.append(self.status_item)
+
+        # Shown so you can confirm at a glance which version is actually
+        # running — overwriting files on disk does nothing to an already
+        # running process, so "did my update take effect?" is otherwise
+        # guesswork.
+        version_item = Gtk.MenuItem(label=f"Version {CURRENT_VERSION}")
+        version_item.set_sensitive(False)
+        menu.append(version_item)
         menu.append(Gtk.SeparatorMenuItem())
 
         self.enabled_item = Gtk.CheckMenuItem(label="Enabled")
@@ -137,9 +140,13 @@ class TrayApp:
         exit_item.connect("activate", self._on_exit)
         menu.append(exit_item)
 
+        self._rebuild_devices_submenu()
+        menu.show_all()
+
+        # Connected *after* show_all() on purpose: show_all() itself emits
+        # "show", and we don't want a rebuild firing mid-construction.
         menu.connect("show", lambda _widget: self._rebuild_devices_submenu())
 
-        menu.show_all()
         self.indicator.set_menu(menu)
 
     def _rebuild_devices_submenu(self):
@@ -152,7 +159,7 @@ class TrayApp:
             devices = []
 
         if not devices:
-            placeholder = Gtk.MenuItem(label="(no active mic devices found)")
+            placeholder = Gtk.MenuItem(label="(no active mic inputs found)")
             placeholder.set_sensitive(False)
             self.devices_submenu.append(placeholder)
         else:
@@ -170,7 +177,7 @@ class TrayApp:
         else:
             self.mute_controller.excluded_sources.add(source_name)
 
-        self.settings.excluded_devices = list(self.mute_controller.excluded_sources)
+        self.settings.excluded_devices = sorted(self.mute_controller.excluded_sources)
         self.settings.save()
 
     def _on_tick(self):
@@ -226,7 +233,6 @@ class TrayApp:
 
     def _on_settings(self, widget):
         dialog = Gtk.Dialog(title="MicSentry Settings", flags=0)
-        dialog.set_default_size(360, 200)
         dialog.add_buttons(
             Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL, Gtk.STOCK_SAVE, Gtk.ResponseType.OK
         )

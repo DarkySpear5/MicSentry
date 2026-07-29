@@ -15,8 +15,7 @@ internal sealed class MicMuteController
     public bool IsAppMuted { get; private set; }
 
     // Device IDs to leave alone entirely, even though they're active capture
-    // devices — empty by default, which preserves the original "mute
-    // everything" behavior for anyone who never touches this setting.
+    // devices. Empty by default = original "mute everything" behaviour.
     public HashSet<string> ExcludedDeviceIds { get; set; } = new();
 
     public void MuteAll()
@@ -75,8 +74,8 @@ internal sealed class MicMuteController
         IsAppMuted = false;
     }
 
-    // For populating the "Devices to Mute" tray submenu — a fresh snapshot
-    // each time, since devices can come and go (USB mic plugged/unplugged).
+    // Fresh snapshot each time it's needed — devices come and go (a USB mic
+    // gets unplugged, a virtual device starts up).
     public static List<(string Id, string Name)> GetAvailableDevices()
     {
         var devices = new List<(string, string)>();

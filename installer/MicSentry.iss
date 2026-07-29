@@ -1,5 +1,5 @@
 #define MyAppName "MicSentry"
-#define MyAppVersion "1.1.1"
+#define MyAppVersion "1.2.0"
 #define MyAppPublisher "DarkySpear5"
 #define MyAppURL "https://github.com/DarkySpear5/MicSentry"
 #define MyAppExeName "MicSentry.exe"
@@ -29,7 +29,7 @@ ArchitecturesInstallIn64BitMode=x64compatible
 Name: "english"; MessagesFile: "compiler:Default.isl"
 
 [Tasks]
-Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"
+Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
 
 [Files]
 Source: "..\publish\{#MyAppExeName}"; DestDir: "{app}"; Flags: ignoreversion

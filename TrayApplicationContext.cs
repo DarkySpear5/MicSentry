@@ -13,6 +13,16 @@ internal sealed class TrayApplicationContext : ApplicationContext
 
     private Icon? _previousIcon;
 
+    private static string AppVersion
+    {
+        get
+        {
+            var v = Application.ProductVersion;
+            int plus = v.IndexOf('+'); // strip the source-revision suffix .NET appends
+            return plus >= 0 ? v[..plus] : v;
+        }
+    }
+
     public TrayApplicationContext()
     {
         _settings = AppSettings.Load();
@@ -23,13 +33,16 @@ internal sealed class TrayApplicationContext : ApplicationContext
         _idleMonitor.ActivityResumed += OnActivityResumed;
 
         _statusMenuItem = new ToolStripMenuItem("Status: —") { Enabled = false };
-        _enabledMenuItem = new ToolStripMenuItem("Enabled", null, OnToggleEnabledClicked) { Checked = _settings.Enabled, CheckOnClick = true };
+        // Shown so you can confirm at a glance which version is actually running.
+        var versionMenuItem = new ToolStripMenuItem($"Version {AppVersion}") { Enabled = false };
+        _enabledMenuItem = new ToolStripMenuItem("Enabled", null, OnToggleEnabledClicked) { Checked = _settings.Enabled };
         _devicesMenuItem = new ToolStripMenuItem("Devices to Mute");
         var settingsMenuItem = new ToolStripMenuItem("Settings...", null, OnSettingsClicked);
         var exitMenuItem = new ToolStripMenuItem("Exit", null, OnExitClicked);
 
         var menu = new ContextMenuStrip();
         menu.Items.Add(_statusMenuItem);
+        menu.Items.Add(versionMenuItem);
         menu.Items.Add(new ToolStripSeparator());
         menu.Items.Add(_enabledMenuItem);
         menu.Items.Add(_devicesMenuItem);
@@ -49,7 +62,6 @@ internal sealed class TrayApplicationContext : ApplicationContext
             _idleMonitor.Start();
 
         UpdateVisualState();
-        CheckForUpdatesIfEnabled();
     }
 
     private void RebuildDevicesSubmenu()
@@ -68,7 +80,7 @@ internal sealed class TrayApplicationContext : ApplicationContext
 
         if (devices.Count == 0)
         {
-            _devicesMenuItem.DropDownItems.Add(new ToolStripMenuItem("(no active mic devices found)") { Enabled = false });
+            _devicesMenuItem.DropDownItems.Add(new ToolStripMenuItem("(no active mic inputs found)") { Enabled = false });
             return;
         }
 
@@ -91,20 +103,8 @@ internal sealed class TrayApplicationContext : ApplicationContext
         else
             _muteController.ExcludedDeviceIds.Add(deviceId);
 
-        _settings.ExcludedDeviceIds = _muteController.ExcludedDeviceIds.ToList();
+        _settings.ExcludedDeviceIds = _muteController.ExcludedDeviceIds.OrderBy(x => x).ToList();
         _settings.Save();
-    }
-
-    private async void CheckForUpdatesIfEnabled()
-    {
-        if (!_settings.CheckForUpdates) return;
-
-        var result = await UpdateChecker.CheckAsync();
-        if (result is { } update)
-        {
-            _notifyIcon.ShowBalloonTip(5000, "MicSentry",
-                $"Version {update.Version} is available: {update.Url}", ToolTipIcon.Info);
-        }
     }
 
     private void OnIdleThresholdReached(object? sender, EventArgs e)
@@ -167,7 +167,6 @@ internal sealed class TrayApplicationContext : ApplicationContext
 
         _settings.IdleMinutes = form.IdleMinutes;
         _settings.StartWithWindows = form.StartWithWindows;
-        _settings.CheckForUpdates = form.CheckForUpdates;
         _settings.Save();
 
         _idleMonitor.IdleThreshold = TimeSpan.FromMinutes(_settings.IdleMinutes);

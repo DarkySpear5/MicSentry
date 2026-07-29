@@ -7,7 +7,9 @@ internal sealed class AppSettings
     public bool Enabled { get; set; } = true;
     public int IdleMinutes { get; set; } = 5;
     public bool StartWithWindows { get; set; }
-    public bool CheckForUpdates { get; set; }
+
+    // Device IDs to leave alone entirely, even though they're active capture
+    // devices. Empty by default = original "mute everything" behaviour.
     public List<string> ExcludedDeviceIds { get; set; } = new();
 
     private static string SettingsPath => Path.Combine(

@@ -22,8 +22,8 @@ If you're in a voice call and step away from your desk for a few minutes without
 
 This was built specifically to be trustworthy for exactly the situation where trust matters: private conversations you don't want overheard.
 
-- **Zero network calls by default, on both platforms.** MicSentry makes no outbound connections unless you explicitly opt in — nothing to leak, nothing to phone home to, out of the box. You can verify this yourself in Task Manager's network column or a firewall log.
-- **One opt-in exception**: an optional "Check for updates on launch" setting, off by default, in Settings on both Windows and Linux. Only if you turn it on, it makes a single request to GitHub at startup to check the latest release — never auto-downloads, never auto-installs, never nags, silent on failure.
+- **Zero network calls on Windows.** The Windows build makes no outbound connections of any kind — nothing to leak, nothing to phone home to. You can verify this yourself in Task Manager's network column or a firewall log.
+- **Linux has one opt-in exception**, off by default: an optional "Check for updates on launch" setting that, only if you turn it on, makes a single request to GitHub at startup to check the latest release — never auto-downloads, never nags, silent on failure. See [linux/README.md](linux/README.md) for exactly what it does and why it's there.
 - **No keylogging.** It only ever reads *when* the last input happened, never *what* was pressed.
 - **Open source.** The entire codebase is small enough to read in one sitting — see for yourself.
 - **Visible confirmation.** Every auto-mute and auto-unmute shows a tray notification, so you always know it's actually working instead of trusting a silent background process.
@@ -34,7 +34,7 @@ This was built specifically to be trustworthy for exactly the situation where tr
 
 Fully built and tested against real hardware.
 
-**Option 1 — Installer (recommended):** grab the latest `MicSentrySetup.exe` from [Releases](../../releases), run it, done. Installs per-user (no admin rights needed), adds a Start Menu entry, a Desktop shortcut, and an uninstaller. The download is ~110MB because it bundles the .NET runtime so it works with zero prerequisites — that's disk/download size only, not memory use, which stays around 40MB while running either way.
+**Option 1 — Installer (recommended):** grab the latest `MicSentrySetup.exe` from [Releases](../../releases), run it, done. Installs per-user (no admin rights needed), adds a Start Menu entry and uninstaller. Tick the "Create a desktop icon" box in the wizard if you want one. The download is ~110MB because it bundles the .NET runtime so it works with zero prerequisites — that's disk/download size only, not memory use, which stays around 40MB while running either way.
 
 **Option 2 — Build from source:**
 
@@ -58,7 +58,9 @@ cd MicSentry/linux
 ./install.sh
 ```
 
-Or grab `MicSentry-Linux-v1.1.0.tar.gz` from [Releases](../../releases) instead of cloning.
+Or grab the `MicSentry-Linux-*.tar.gz` from [Releases](../../releases) instead of cloning.
+
+**Updating:** re-run `./install.sh`, then **quit MicSentry from the tray and start it again** — a running copy keeps the old code in memory no matter what's on disk. Right-click the tray icon and check the version line to confirm the update took.
 
 See [linux/README.md](linux/README.md) for dependencies and known gaps (notably: no tray icon on stock GNOME without an extra extension, and no idle detection yet on non-GNOME Wayland compositors).
 
@@ -66,9 +68,10 @@ See [linux/README.md](linux/README.md) for dependencies and known gaps (notably:
 
 Right-click the tray icon for:
 
+- **Version** — which build is actually running (handy for confirming an update took effect)
 - **Enabled** — toggle protection on/off
-- **Devices to Mute** — a checkbox per detected microphone input, so you can exclude one if you don't want it touched. Nothing excluded by default, which mutes every active input (the original behavior) — this is only for the case where muting *everything* isn't what you want.
-- **Settings...** — idle timeout (minutes), start-with-Windows/login, and the opt-in update check
+- **Devices to Mute** — a checkbox per detected microphone input. By default *every* input gets muted; untick one to leave it alone. Useful if you have a virtual audio device (SteelSeries Sonar, VoiceMeeter, OBS) layered on a physical mic and only want one of them touched.
+- **Settings...** — idle timeout, start-with-Windows/login (and on Linux, the opt-in update check)
 - **Exit**
 
 ## License

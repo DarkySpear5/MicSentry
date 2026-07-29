@@ -8,14 +8,6 @@ BIN_DIR="$HOME/.local/bin"
 DESKTOP_DIR="$HOME/.local/share/applications"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-# Respects a localized/redirected Desktop folder (xdg-user-dirs) if present,
-# falls back to the plain ~/Desktop convention if that tool isn't installed.
-if command -v xdg-user-dir >/dev/null 2>&1; then
-    USER_DESKTOP_DIR="$(xdg-user-dir DESKTOP 2>/dev/null || echo "$HOME/Desktop")"
-else
-    USER_DESKTOP_DIR="$HOME/Desktop"
-fi
-
 echo "Checking dependencies..."
 missing=()
 command -v python3 >/dev/null 2>&1 || missing+=("python3")
@@ -41,20 +33,15 @@ if [ ${#missing[@]} -ne 0 ]; then
     exit 1
 fi
 
-WAS_RUNNING=0
-if pgrep -f "python3.*micsentry\.py" >/dev/null 2>&1; then
-    echo "MicSentry is currently running — stopping it so the update actually takes effect"
-    echo "(overwriting the files on disk doesn't change code already loaded into a running process)..."
-    pkill -f "python3.*micsentry\.py" 2>/dev/null || true
-    sleep 1
-    WAS_RUNNING=1
-fi
-
-echo "Installing to $INSTALL_DIR ..."
+VERSION="$(sed -n 's/^CURRENT_VERSION = "\(.*\)".*/\1/p' "$SCRIPT_DIR/update_checker.py" 2>/dev/null || true)"
+echo "Installing MicSentry ${VERSION:-(unknown version)} to $INSTALL_DIR ..."
 mkdir -p "$INSTALL_DIR" "$BIN_DIR" "$DESKTOP_DIR" "$HOME/.config/micsentry"
 
 cp "$SCRIPT_DIR"/*.py "$INSTALL_DIR/"
-cp -r "$SCRIPT_DIR/icons" "$INSTALL_DIR/"
+# Copy the icon files themselves rather than the directory, so re-running
+# this over an existing install can't nest icons/icons/.
+mkdir -p "$INSTALL_DIR/icons"
+cp "$SCRIPT_DIR/icons"/*.png "$INSTALL_DIR/icons/"
 
 cat > "$BIN_DIR/micsentry" <<EOF
 #!/usr/bin/env bash
@@ -62,7 +49,8 @@ exec python3 "$INSTALL_DIR/micsentry.py" "\$@"
 EOF
 chmod +x "$BIN_DIR/micsentry"
 
-DESKTOP_ENTRY_CONTENTS="[Desktop Entry]
+cat > "$DESKTOP_DIR/micsentry.desktop" <<EOF
+[Desktop Entry]
 Type=Application
 Name=MicSentry
 Comment=Mutes your mic when you're idle, unmutes when you're back
@@ -70,29 +58,35 @@ Exec=$BIN_DIR/micsentry
 Icon=$INSTALL_DIR/icons/state-active.png
 Terminal=false
 Categories=Utility;
-"
+EOF
 
-echo "$DESKTOP_ENTRY_CONTENTS" > "$DESKTOP_DIR/micsentry.desktop"
-chmod +x "$DESKTOP_DIR/micsentry.desktop"
-
-if mkdir -p "$USER_DESKTOP_DIR" 2>/dev/null; then
-    echo "$DESKTOP_ENTRY_CONTENTS" > "$USER_DESKTOP_DIR/micsentry.desktop"
-    chmod +x "$USER_DESKTOP_DIR/micsentry.desktop"
+# Verify the install actually landed, so a partial/failed copy is loud
+# instead of silently leaving a half-broken install behind.
+install_ok=1
+for required in micsentry.py tray_app.py mic_mute.py idle_monitor.py settings.py update_checker.py icons/state-active.png; do
+    if [ ! -f "$INSTALL_DIR/$required" ]; then
+        echo "ERROR: expected file missing after install: $INSTALL_DIR/$required" >&2
+        install_ok=0
+    fi
+done
+if [ "$install_ok" -ne 1 ]; then
+    echo "" >&2
+    echo "Install did NOT complete correctly. Please report the above, along with the" >&2
+    echo "output of:  ls -la '$SCRIPT_DIR'" >&2
+    exit 1
 fi
+
+INSTALLED_VERSION="$(sed -n 's/^CURRENT_VERSION = "\(.*\)".*/\1/p' "$INSTALL_DIR/update_checker.py" 2>/dev/null || true)"
 
 echo ""
-if [ "$WAS_RUNNING" -eq 1 ]; then
-    echo "Updated — restarting MicSentry with the new version now..."
-    nohup "$BIN_DIR/micsentry" >/dev/null 2>&1 &
-    disown
-    echo "Done. Right-click the tray icon to confirm the new version's changes are there."
-else
-    echo "Installed. Launch it with:  micsentry"
-fi
+echo "Installed MicSentry ${INSTALLED_VERSION:-?} successfully. Launch it with:  micsentry"
 echo "(make sure $BIN_DIR is on your PATH — add 'export PATH=\"\$HOME/.local/bin:\$PATH\"' to your shell rc file if not)"
-echo "It also shows up in your application launcher, and as an icon on your Desktop, as \"MicSentry\"."
-echo "(Some file managers — GNOME Files/Nautilus in particular — show a new Desktop icon as untrusted the"
-echo "first time; right-click it and choose \"Allow Launching\" if double-clicking doesn't work right away.)"
+echo "It also shows up in your application launcher as \"MicSentry\"."
+echo ""
+echo "IMPORTANT if you were already running MicSentry: quit it first (right-click the"
+echo "tray icon -> Exit) and start it again. Updating the files on disk does nothing to"
+echo "an already-running copy — Python loads the code into memory once, at startup."
+echo "Right-click the tray icon and check it says \"Version ${INSTALLED_VERSION:-?}\" to confirm the update took."
 echo ""
 echo "NOTE for GNOME users: stock GNOME Shell hides tray icons by default."
 echo "Install the \"AppIndicator and KStatusNotifierItem Support\" extension to see it:"
