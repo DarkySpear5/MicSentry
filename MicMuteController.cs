@@ -1,4 +1,5 @@
 using System.Runtime.InteropServices;
+using System.Text.Json;
 using NAudio.CoreAudioApi;
 
 namespace MicSentry;
@@ -11,6 +12,10 @@ namespace MicSentry;
 internal sealed class MicMuteController
 {
     private readonly Dictionary<string, bool> _preMuteState = new();
+
+    private static string StatePath => Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+        "MicSentry", "mutestate.json");
 
     public bool IsAppMuted { get; private set; }
 
@@ -45,6 +50,7 @@ internal sealed class MicMuteController
         }
 
         IsAppMuted = true;
+        SaveState();
     }
 
     public void UnmuteAll()
@@ -72,6 +78,94 @@ internal sealed class MicMuteController
 
         _preMuteState.Clear();
         IsAppMuted = false;
+        ClearState();
+    }
+
+    // Called once at startup, before the idle monitor starts. If a previous
+    // process instance muted devices and then died (crash, forced restart,
+    // reboot) before it could unmute them, a fresh instance normally has no
+    // memory of that — IsAppMuted defaults to false — so it would never
+    // auto-unmute, leaving the mic silently muted with the tray icon showing
+    // green "watching" the whole time. This reconciles saved state against
+    // what's actually still muted right now, so a resumed process picks up
+    // exactly where the dead one left off instead of losing track entirely.
+    // Returns true if a pending mute was restored (caller should treat this
+    // session as already idle/muted).
+    public bool TryRestorePendingMute()
+    {
+        try
+        {
+            if (!File.Exists(StatePath)) return false;
+
+            var saved = JsonSerializer.Deserialize<Dictionary<string, bool>>(File.ReadAllText(StatePath));
+            if (saved is null || saved.Count == 0)
+            {
+                ClearState();
+                return false;
+            }
+
+            using var enumerator = new MMDeviceEnumerator();
+            var restored = new Dictionary<string, bool>();
+
+            foreach (var device in enumerator.EnumerateAudioEndPoints(DataFlow.Capture, DeviceState.Active))
+            {
+                using (device)
+                {
+                    if (!saved.TryGetValue(device.ID, out bool wasMutedBefore))
+                        continue;
+
+                    try
+                    {
+                        // Only take ownership of devices that are STILL muted —
+                        // if something else already unmuted it while we were
+                        // down, there's nothing to restore for that device.
+                        if (device.AudioEndpointVolume.Mute)
+                            restored[device.ID] = wasMutedBefore;
+                    }
+                    catch (COMException)
+                    {
+                        // device went away — nothing to reconcile for it
+                    }
+                }
+            }
+
+            if (restored.Count == 0)
+            {
+                ClearState();
+                return false;
+            }
+
+            _preMuteState.Clear();
+            foreach (var kv in restored)
+                _preMuteState[kv.Key] = kv.Value;
+
+            IsAppMuted = true;
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    private void SaveState()
+    {
+        try
+        {
+            var dir = Path.GetDirectoryName(StatePath)!;
+            Directory.CreateDirectory(dir);
+            File.WriteAllText(StatePath, JsonSerializer.Serialize(_preMuteState));
+        }
+        catch
+        {
+            // best-effort — losing this only means a future crash can't
+            // self-heal, it's not fatal to muting/unmuting right now
+        }
+    }
+
+    private static void ClearState()
+    {
+        try { File.Delete(StatePath); } catch { }
     }
 
     // Fresh snapshot each time it's needed — devices come and go (a USB mic

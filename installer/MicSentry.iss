@@ -1,5 +1,5 @@
 #define MyAppName "MicSentry"
-#define MyAppVersion "1.2.1"
+#define MyAppVersion "1.2.2"
 #define MyAppPublisher "DarkySpear5"
 #define MyAppURL "https://github.com/DarkySpear5/MicSentry"
 #define MyAppExeName "MicSentry.exe"

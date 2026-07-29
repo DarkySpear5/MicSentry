@@ -27,6 +27,13 @@ internal sealed class IdleMonitor : IDisposable
         _timer.Start();
     }
 
+    // For reconciling with a mute state restored from a previous process
+    // instance: marks the monitor as already-idle so the very next real
+    // input correctly fires ActivityResumed, instead of the monitor's own
+    // "not idle" default silently preventing the resumed process from ever
+    // noticing it should unmute.
+    public void ForceIdleState() => _isIdle = true;
+
     public void Stop()
     {
         _timer.Stop();

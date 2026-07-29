@@ -20,6 +20,11 @@ internal sealed class TrayApplicationContext : ApplicationContext
         _settings = AppSettings.Load();
         _muteController.ExcludedDeviceIds = new HashSet<string>(_settings.ExcludedDeviceIds);
 
+        // Reconcile with whatever a previous (possibly crashed/killed) instance
+        // left behind BEFORE starting the idle monitor, so the state machine
+        // comes up consistent with reality from the very first tick.
+        bool resumedPendingMute = _muteController.TryRestorePendingMute();
+
         _idleMonitor = new IdleMonitor(TimeSpan.FromMinutes(_settings.IdleMinutes), TimeSpan.FromSeconds(1));
         _idleMonitor.IdleThresholdReached += OnIdleThresholdReached;
         _idleMonitor.ActivityResumed += OnActivityResumed;
@@ -51,7 +56,28 @@ internal sealed class TrayApplicationContext : ApplicationContext
         };
 
         if (_settings.Enabled)
+        {
             _idleMonitor.Start();
+
+            if (resumedPendingMute)
+            {
+                // Sync the monitor's own idle-tracking so the very next real
+                // input correctly fires ActivityResumed and unmutes — without
+                // this, the monitor's fresh "not idle" default would never
+                // notice a transition since it never saw itself go idle.
+                _idleMonitor.ForceIdleState();
+                _notifyIcon.ShowBalloonTip(5000, "MicSentry",
+                    "Your mic was still muted from before this restarted — it'll unmute automatically on your next input.",
+                    ToolTipIcon.Info);
+            }
+        }
+        else if (resumedPendingMute)
+        {
+            // Protection is off — don't leave the mic silently muted with no
+            // way to recover it since the idle monitor won't be running to
+            // catch the next activity.
+            try { _muteController.UnmuteAll(); } catch { /* best effort */ }
+        }
 
         UpdateVisualState();
         CheckForUpdatesIfEnabled();
