@@ -8,6 +8,10 @@ internal sealed class AppSettings
     public int IdleMinutes { get; set; } = 5;
     public bool StartWithWindows { get; set; }
 
+    // Off by default — the one deliberate exception to "zero network calls",
+    // so it stays opt-in rather than phoning home out of the box.
+    public bool CheckForUpdates { get; set; }
+
     // Device IDs to leave alone entirely, even though they're active capture
     // devices. Empty by default = original "mute everything" behaviour.
     public List<string> ExcludedDeviceIds { get; set; } = new();

@@ -13,15 +13,7 @@ internal sealed class TrayApplicationContext : ApplicationContext
 
     private Icon? _previousIcon;
 
-    private static string AppVersion
-    {
-        get
-        {
-            var v = Application.ProductVersion;
-            int plus = v.IndexOf('+'); // strip the source-revision suffix .NET appends
-            return plus >= 0 ? v[..plus] : v;
-        }
-    }
+    private static string AppVersion => UpdateChecker.CurrentVersion;
 
     public TrayApplicationContext()
     {
@@ -62,6 +54,22 @@ internal sealed class TrayApplicationContext : ApplicationContext
             _idleMonitor.Start();
 
         UpdateVisualState();
+        CheckForUpdatesIfEnabled();
+    }
+
+    // async void is deliberate: fire-and-forget from the constructor. WinForms'
+    // sync context resumes this on the UI thread after the await, so touching
+    // _notifyIcon afterwards is safe without an explicit Invoke.
+    private async void CheckForUpdatesIfEnabled()
+    {
+        if (!_settings.CheckForUpdates) return;
+
+        var result = await UpdateChecker.CheckAsync();
+        if (result is { } update)
+        {
+            _notifyIcon.ShowBalloonTip(5000, "MicSentry",
+                $"Version {update.Version} is available: {update.Url}", ToolTipIcon.Info);
+        }
     }
 
     private void RebuildDevicesSubmenu()
@@ -167,6 +175,9 @@ internal sealed class TrayApplicationContext : ApplicationContext
 
         _settings.IdleMinutes = form.IdleMinutes;
         _settings.StartWithWindows = form.StartWithWindows;
+        // Forgetting this line was the bug that made the checkbox silently
+        // revert to unchecked every time Settings was reopened.
+        _settings.CheckForUpdates = form.CheckForUpdates;
         _settings.Save();
 
         _idleMonitor.IdleThreshold = TimeSpan.FromMinutes(_settings.IdleMinutes);
