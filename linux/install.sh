@@ -41,6 +41,15 @@ if [ ${#missing[@]} -ne 0 ]; then
     exit 1
 fi
 
+WAS_RUNNING=0
+if pgrep -f "python3.*micsentry\.py" >/dev/null 2>&1; then
+    echo "MicSentry is currently running — stopping it so the update actually takes effect"
+    echo "(overwriting the files on disk doesn't change code already loaded into a running process)..."
+    pkill -f "python3.*micsentry\.py" 2>/dev/null || true
+    sleep 1
+    WAS_RUNNING=1
+fi
+
 echo "Installing to $INSTALL_DIR ..."
 mkdir -p "$INSTALL_DIR" "$BIN_DIR" "$DESKTOP_DIR" "$HOME/.config/micsentry"
 
@@ -72,7 +81,14 @@ if mkdir -p "$USER_DESKTOP_DIR" 2>/dev/null; then
 fi
 
 echo ""
-echo "Installed. Launch it with:  micsentry"
+if [ "$WAS_RUNNING" -eq 1 ]; then
+    echo "Updated — restarting MicSentry with the new version now..."
+    nohup "$BIN_DIR/micsentry" >/dev/null 2>&1 &
+    disown
+    echo "Done. Right-click the tray icon to confirm the new version's changes are there."
+else
+    echo "Installed. Launch it with:  micsentry"
+fi
 echo "(make sure $BIN_DIR is on your PATH — add 'export PATH=\"\$HOME/.local/bin:\$PATH\"' to your shell rc file if not)"
 echo "It also shows up in your application launcher, and as an icon on your Desktop, as \"MicSentry\"."
 echo "(Some file managers — GNOME Files/Nautilus in particular — show a new Desktop icon as untrusted the"

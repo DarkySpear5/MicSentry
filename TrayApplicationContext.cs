@@ -167,6 +167,7 @@ internal sealed class TrayApplicationContext : ApplicationContext
 
         _settings.IdleMinutes = form.IdleMinutes;
         _settings.StartWithWindows = form.StartWithWindows;
+        _settings.CheckForUpdates = form.CheckForUpdates;
         _settings.Save();
 
         _idleMonitor.IdleThreshold = TimeSpan.FromMinutes(_settings.IdleMinutes);

@@ -10,7 +10,7 @@ namespace MicSentry;
 // calls," which is exactly why it defaults to off in AppSettings.
 internal static class UpdateChecker
 {
-    public const string CurrentVersion = "1.1.0"; // bump alongside the repo's release tags
+    public const string CurrentVersion = "1.1.1"; // bump alongside the repo's release tags
 
     private const string ReleasesApiUrl = "https://api.github.com/repos/DarkySpear5/MicSentry/releases/latest";
     public const string ReleasesPageUrl = "https://github.com/DarkySpear5/MicSentry/releases/latest";

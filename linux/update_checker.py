@@ -11,7 +11,7 @@ import json
 import threading
 import urllib.request
 
-CURRENT_VERSION = "1.1.0"  # bump alongside the repo's release tags
+CURRENT_VERSION = "1.1.1"  # bump alongside the repo's release tags
 
 _RELEASES_API = "https://api.github.com/repos/DarkySpear5/MicSentry/releases/latest"
 RELEASES_PAGE = "https://github.com/DarkySpear5/MicSentry/releases/latest"

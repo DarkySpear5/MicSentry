@@ -101,7 +101,12 @@ class TrayApp:
         GLib.idle_add(self._show_update_notification, version, url)
 
     def _show_update_notification(self, version, url):
-        _notify("MicSentry", f"Version {version} is available: {url}")
+        _notify(
+            "MicSentry",
+            f"Version {version} is available. To update: git pull (or download the new "
+            f"release) then re-run install.sh — it'll restart MicSentry for you. "
+            f"{url}",
+        )
         return False  # one-shot; GLib.idle_add would otherwise repeat this
 
     def _build_menu(self):
@@ -221,6 +226,7 @@ class TrayApp:
 
     def _on_settings(self, widget):
         dialog = Gtk.Dialog(title="MicSentry Settings", flags=0)
+        dialog.set_default_size(360, 200)
         dialog.add_buttons(
             Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL, Gtk.STOCK_SAVE, Gtk.ResponseType.OK
         )

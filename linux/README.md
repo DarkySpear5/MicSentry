@@ -13,6 +13,10 @@ Same idea as the Windows version: mutes your mic after real inactivity, unmutes 
 - **Process name**: the process renames itself (via `prctl`) so it shows up as `micsentry` in `ps`/`top`/`htop` and most system monitors' Name column, instead of the generic `python3` every Python script would otherwise show as — so you (or whoever's checking memory usage) can actually tell it apart from other Python processes.
 - **Update check (off by default)**: Settings has an opt-in "Check for updates on launch" checkbox. When enabled, it makes exactly one request to GitHub's API at startup to see if a newer release exists, and shows a notification if so — it never auto-downloads or auto-installs anything, and it's completely silent if you're already up to date or if the request fails for any reason (no internet, rate-limited, whatever). This is the **one deliberate exception** to "zero network calls," which is exactly why it defaults to off and lives behind an explicit checkbox rather than running automatically.
 
+## Updating
+
+`git pull` (or download the new release) then re-run `./install.sh`. **Important**: just overwriting the files on disk doesn't change anything in an already-running MicSentry process — Python loads the code into memory once at startup, so a stale running instance keeps running the old version no matter what's on disk. `install.sh` handles this for you: it detects if MicSentry is currently running, stops it, installs the new files, and automatically restarts it — so a straight `./install.sh` re-run is a complete update, no manual restart needed. If you ever update some other way (manually copying files, etc.), make sure to fully quit MicSentry (right-click tray icon → Exit) and relaunch it afterward.
+
 ## Install
 
 ```bash
