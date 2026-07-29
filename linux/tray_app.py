@@ -66,6 +66,7 @@ class TrayApp:
         self.settings = AppSettings.load()
         self.idle_monitor = IdleMonitor()
         self.mute_controller = MicMuteController()
+        self.mute_controller.excluded_sources = set(self.settings.excluded_devices)
         self._was_idle = False
 
         self.indicator = AppIndicator3.Indicator.new(
@@ -115,6 +116,11 @@ class TrayApp:
         self.enabled_item.set_active(self.settings.enabled)
         self.enabled_item.connect("toggled", self._on_toggle_enabled)
         menu.append(self.enabled_item)
+
+        self.devices_item = Gtk.MenuItem(label="Devices to Mute")
+        self.devices_submenu = Gtk.Menu()
+        self.devices_item.set_submenu(self.devices_submenu)
+        menu.append(self.devices_item)
         menu.append(Gtk.SeparatorMenuItem())
 
         settings_item = Gtk.MenuItem(label="Settings...")
@@ -126,8 +132,41 @@ class TrayApp:
         exit_item.connect("activate", self._on_exit)
         menu.append(exit_item)
 
+        menu.connect("show", lambda _widget: self._rebuild_devices_submenu())
+
         menu.show_all()
         self.indicator.set_menu(menu)
+
+    def _rebuild_devices_submenu(self):
+        for child in self.devices_submenu.get_children():
+            self.devices_submenu.remove(child)
+
+        try:
+            devices = MicMuteController.get_available_devices()
+        except Exception:
+            devices = []
+
+        if not devices:
+            placeholder = Gtk.MenuItem(label="(no active mic devices found)")
+            placeholder.set_sensitive(False)
+            self.devices_submenu.append(placeholder)
+        else:
+            for name, description in devices:
+                item = Gtk.CheckMenuItem(label=description)
+                item.set_active(name not in self.mute_controller.excluded_sources)
+                item.connect("toggled", self._on_device_toggled, name)
+                self.devices_submenu.append(item)
+
+        self.devices_submenu.show_all()
+
+    def _on_device_toggled(self, widget, source_name):
+        if widget.get_active():
+            self.mute_controller.excluded_sources.discard(source_name)
+        else:
+            self.mute_controller.excluded_sources.add(source_name)
+
+        self.settings.excluded_devices = list(self.mute_controller.excluded_sources)
+        self.settings.save()
 
     def _on_tick(self):
         if not self.settings.enabled or not self.idle_monitor.available:

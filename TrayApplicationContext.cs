@@ -9,19 +9,22 @@ internal sealed class TrayApplicationContext : ApplicationContext
 
     private readonly ToolStripMenuItem _statusMenuItem;
     private readonly ToolStripMenuItem _enabledMenuItem;
+    private readonly ToolStripMenuItem _devicesMenuItem;
 
     private Icon? _previousIcon;
 
     public TrayApplicationContext()
     {
         _settings = AppSettings.Load();
+        _muteController.ExcludedDeviceIds = new HashSet<string>(_settings.ExcludedDeviceIds);
 
         _idleMonitor = new IdleMonitor(TimeSpan.FromMinutes(_settings.IdleMinutes), TimeSpan.FromSeconds(1));
         _idleMonitor.IdleThresholdReached += OnIdleThresholdReached;
         _idleMonitor.ActivityResumed += OnActivityResumed;
 
         _statusMenuItem = new ToolStripMenuItem("Status: —") { Enabled = false };
-        _enabledMenuItem = new ToolStripMenuItem("Enabled", null, OnToggleEnabledClicked) { Checked = _settings.Enabled };
+        _enabledMenuItem = new ToolStripMenuItem("Enabled", null, OnToggleEnabledClicked) { Checked = _settings.Enabled, CheckOnClick = true };
+        _devicesMenuItem = new ToolStripMenuItem("Devices to Mute");
         var settingsMenuItem = new ToolStripMenuItem("Settings...", null, OnSettingsClicked);
         var exitMenuItem = new ToolStripMenuItem("Exit", null, OnExitClicked);
 
@@ -29,10 +32,12 @@ internal sealed class TrayApplicationContext : ApplicationContext
         menu.Items.Add(_statusMenuItem);
         menu.Items.Add(new ToolStripSeparator());
         menu.Items.Add(_enabledMenuItem);
+        menu.Items.Add(_devicesMenuItem);
         menu.Items.Add(new ToolStripSeparator());
         menu.Items.Add(settingsMenuItem);
         menu.Items.Add(new ToolStripSeparator());
         menu.Items.Add(exitMenuItem);
+        menu.Opening += (_, _) => RebuildDevicesSubmenu();
 
         _notifyIcon = new NotifyIcon
         {
@@ -44,6 +49,62 @@ internal sealed class TrayApplicationContext : ApplicationContext
             _idleMonitor.Start();
 
         UpdateVisualState();
+        CheckForUpdatesIfEnabled();
+    }
+
+    private void RebuildDevicesSubmenu()
+    {
+        _devicesMenuItem.DropDownItems.Clear();
+
+        List<(string Id, string Name)> devices;
+        try
+        {
+            devices = MicMuteController.GetAvailableDevices();
+        }
+        catch
+        {
+            devices = new List<(string, string)>();
+        }
+
+        if (devices.Count == 0)
+        {
+            _devicesMenuItem.DropDownItems.Add(new ToolStripMenuItem("(no active mic devices found)") { Enabled = false });
+            return;
+        }
+
+        foreach (var (id, name) in devices)
+        {
+            var item = new ToolStripMenuItem(name)
+            {
+                Checked = !_muteController.ExcludedDeviceIds.Contains(id),
+                CheckOnClick = true,
+            };
+            item.Click += (_, _) => OnDeviceToggled(id, item.Checked);
+            _devicesMenuItem.DropDownItems.Add(item);
+        }
+    }
+
+    private void OnDeviceToggled(string deviceId, bool shouldMute)
+    {
+        if (shouldMute)
+            _muteController.ExcludedDeviceIds.Remove(deviceId);
+        else
+            _muteController.ExcludedDeviceIds.Add(deviceId);
+
+        _settings.ExcludedDeviceIds = _muteController.ExcludedDeviceIds.ToList();
+        _settings.Save();
+    }
+
+    private async void CheckForUpdatesIfEnabled()
+    {
+        if (!_settings.CheckForUpdates) return;
+
+        var result = await UpdateChecker.CheckAsync();
+        if (result is { } update)
+        {
+            _notifyIcon.ShowBalloonTip(5000, "MicSentry",
+                $"Version {update.Version} is available: {update.Url}", ToolTipIcon.Info);
+        }
     }
 
     private void OnIdleThresholdReached(object? sender, EventArgs e)

@@ -8,6 +8,14 @@ BIN_DIR="$HOME/.local/bin"
 DESKTOP_DIR="$HOME/.local/share/applications"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
+# Respects a localized/redirected Desktop folder (xdg-user-dirs) if present,
+# falls back to the plain ~/Desktop convention if that tool isn't installed.
+if command -v xdg-user-dir >/dev/null 2>&1; then
+    USER_DESKTOP_DIR="$(xdg-user-dir DESKTOP 2>/dev/null || echo "$HOME/Desktop")"
+else
+    USER_DESKTOP_DIR="$HOME/Desktop"
+fi
+
 echo "Checking dependencies..."
 missing=()
 command -v python3 >/dev/null 2>&1 || missing+=("python3")
@@ -45,8 +53,7 @@ exec python3 "$INSTALL_DIR/micsentry.py" "\$@"
 EOF
 chmod +x "$BIN_DIR/micsentry"
 
-cat > "$DESKTOP_DIR/micsentry.desktop" <<EOF
-[Desktop Entry]
+DESKTOP_ENTRY_CONTENTS="[Desktop Entry]
 Type=Application
 Name=MicSentry
 Comment=Mutes your mic when you're idle, unmutes when you're back
@@ -54,12 +61,22 @@ Exec=$BIN_DIR/micsentry
 Icon=$INSTALL_DIR/icons/state-active.png
 Terminal=false
 Categories=Utility;
-EOF
+"
+
+echo "$DESKTOP_ENTRY_CONTENTS" > "$DESKTOP_DIR/micsentry.desktop"
+chmod +x "$DESKTOP_DIR/micsentry.desktop"
+
+if mkdir -p "$USER_DESKTOP_DIR" 2>/dev/null; then
+    echo "$DESKTOP_ENTRY_CONTENTS" > "$USER_DESKTOP_DIR/micsentry.desktop"
+    chmod +x "$USER_DESKTOP_DIR/micsentry.desktop"
+fi
 
 echo ""
 echo "Installed. Launch it with:  micsentry"
 echo "(make sure $BIN_DIR is on your PATH — add 'export PATH=\"\$HOME/.local/bin:\$PATH\"' to your shell rc file if not)"
-echo "It also shows up in your application launcher as \"MicSentry\"."
+echo "It also shows up in your application launcher, and as an icon on your Desktop, as \"MicSentry\"."
+echo "(Some file managers — GNOME Files/Nautilus in particular — show a new Desktop icon as untrusted the"
+echo "first time; right-click it and choose \"Allow Launching\" if double-clicking doesn't work right away.)"
 echo ""
 echo "NOTE for GNOME users: stock GNOME Shell hides tray icons by default."
 echo "Install the \"AppIndicator and KStatusNotifierItem Support\" extension to see it:"

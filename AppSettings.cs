@@ -7,6 +7,8 @@ internal sealed class AppSettings
     public bool Enabled { get; set; } = true;
     public int IdleMinutes { get; set; } = 5;
     public bool StartWithWindows { get; set; }
+    public bool CheckForUpdates { get; set; }
+    public List<string> ExcludedDeviceIds { get; set; } = new();
 
     private static string SettingsPath => Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),

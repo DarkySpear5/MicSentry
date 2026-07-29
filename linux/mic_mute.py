@@ -16,12 +16,18 @@ class MicMuteController:
     def __init__(self):
         self._pre_mute_state = {}
         self.is_app_muted = False
+        # Source names to leave alone entirely, even though they're active
+        # inputs — empty by default, which preserves the original "mute
+        # everything" behavior for anyone who never touches this setting.
+        self.excluded_sources = set()
 
     def mute_all(self):
         if self.is_app_muted:
             return
 
         for source in self._list_sources():
+            if source in self.excluded_sources:
+                continue
             try:
                 was_muted = self._get_mute(source)
                 self._pre_mute_state[source] = was_muted
@@ -85,3 +91,36 @@ class MicMuteController:
             timeout=_TIMEOUT,
             check=True,
         )
+
+    @staticmethod
+    def get_available_devices():
+        """[(source_name, friendly_description), ...] for the device-selection
+        submenu. Uses the long-form `pactl list sources` for human-readable
+        descriptions — the short form only gives raw source names. Returns
+        an empty list on any failure rather than raising.
+        """
+        try:
+            out = subprocess.run(
+                ["pactl", "list", "sources"],
+                capture_output=True,
+                text=True,
+                timeout=_TIMEOUT,
+                check=True,
+            )
+        except Exception:
+            return []
+
+        devices = []
+        for block in out.stdout.split("\nSource #"):
+            name = None
+            description = None
+            for line in block.splitlines():
+                stripped = line.strip()
+                if stripped.startswith("Name:"):
+                    name = stripped[len("Name:"):].strip()
+                elif stripped.startswith("Description:"):
+                    description = stripped[len("Description:"):].strip()
+            if name and not name.endswith(".monitor"):
+                devices.append((name, description or name))
+
+        return devices

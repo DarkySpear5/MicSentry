@@ -14,6 +14,10 @@ DEFAULTS = {
     # calls," so it stays opt-in rather than silently phoning home out of
     # the box. See update_checker.py.
     "check_for_updates": False,
+    # Source names to never mute, even though they're active inputs — empty
+    # by default, which preserves "mute everything" for anyone who never
+    # touches this setting.
+    "excluded_devices": [],
 }
 
 
@@ -24,6 +28,7 @@ class AppSettings:
         self.idle_minutes = int(data.get("idle_minutes", DEFAULTS["idle_minutes"]))
         self.start_with_login = bool(data.get("start_with_login", DEFAULTS["start_with_login"]))
         self.check_for_updates = bool(data.get("check_for_updates", DEFAULTS["check_for_updates"]))
+        self.excluded_devices = list(data.get("excluded_devices", DEFAULTS["excluded_devices"]))
 
     @classmethod
     def load(cls):

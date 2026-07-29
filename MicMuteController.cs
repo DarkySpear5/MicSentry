@@ -14,6 +14,11 @@ internal sealed class MicMuteController
 
     public bool IsAppMuted { get; private set; }
 
+    // Device IDs to leave alone entirely, even though they're active capture
+    // devices — empty by default, which preserves the original "mute
+    // everything" behavior for anyone who never touches this setting.
+    public HashSet<string> ExcludedDeviceIds { get; set; } = new();
+
     public void MuteAll()
     {
         if (IsAppMuted) return;
@@ -23,6 +28,9 @@ internal sealed class MicMuteController
         {
             using (device)
             {
+                if (ExcludedDeviceIds.Contains(device.ID))
+                    continue;
+
                 try
                 {
                     bool wasMuted = device.AudioEndpointVolume.Mute;
@@ -65,5 +73,23 @@ internal sealed class MicMuteController
 
         _preMuteState.Clear();
         IsAppMuted = false;
+    }
+
+    // For populating the "Devices to Mute" tray submenu — a fresh snapshot
+    // each time, since devices can come and go (USB mic plugged/unplugged).
+    public static List<(string Id, string Name)> GetAvailableDevices()
+    {
+        var devices = new List<(string, string)>();
+
+        using var enumerator = new MMDeviceEnumerator();
+        foreach (var device in enumerator.EnumerateAudioEndPoints(DataFlow.Capture, DeviceState.Active))
+        {
+            using (device)
+            {
+                devices.Add((device.ID, device.FriendlyName));
+            }
+        }
+
+        return devices;
     }
 }
